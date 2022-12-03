@@ -1,0 +1,98 @@
+<html>
+  <head>
+    <title>Basic Mint Page</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Get some bootstrap default styles -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+  </head>
+  <body>
+    <!-- Construct a Bootstrap layout -->
+    <div class="container">
+      <div class="row">
+        <div class="col-md-12">
+          <h1>Basic Mint Page</h1>
+          <div>
+            <button class="btn btn-primary" id="btn-connect">
+              Connect Wallet
+            </button>
+            <button class="btn btn-primary" id="account" style="display: none">
+
+            </button>
+            <div class="spin"></div>
+          </div>
+          <div class="col-md-12">
+          </div>
+
+          <div id="mint-section" style="display: none">
+            <button class="btn btn-primary" id="btn-disconnect">
+              Disconnect Wallet
+            </button>
+            <br/>
+            <p><span id="nfts_minted"></span>/9999 TOKENS LEFT</p>
+            <span id="mint-price"></span><br />
+            <div>
+              <div class="mint-math">
+                <button id="mint-minus">-</button>
+                <input type="number" class="number" disabled id="quantity" value="1" />
+                <button id="mint-plus">+</button>
+              </div>
+            </div>
+            <button class="btn btn-primary" id="mint-button">MINT</button>
+            <span id="available-mint" class="w-hidden"></span><br />
+            <span id="alert-bar"></span><br />
+            <hr>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- We use simple <template> templating for the example -->
+    <!-- <div id="templates" style="display: none">
+      <template id="template-balance">
+        <tr>
+          <th class="address"></th>
+          <td class="balance"></td>
+        </tr>
+      </template>
+    </div> -->
+
+    <!--
+
+      Use unpkg CDN to load all NPM packages to vanilla Javascript - read more at http://unpkg.com
+
+      On your deployment, you properly either want to use a preprocessing tool like webpack
+      to include these files, or extract NPM archives and manually host the files inside.
+
+      TODO: Pin down all versions.
+
+    -->
+    <script src="https://unpkg.com/web3@latest/dist/web3.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/web3modal"></script>
+    <script
+      type="text/javascript"
+      src="https://unpkg.com/evm-chains@0.2.0/dist/umd/index.min.js"
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/keccak256@latest/keccak256.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/merkletreejs@latest/merkletree.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.20/lodash.min.js"></script>
+
+    <script
+      type="text/javascript"
+      src="https://unpkg.com/@walletconnect/web3-provider"
+    ></script>
+    <script
+      type="text/javascript"
+      src="https://unpkg.com/fortmatic@2.0.6/dist/fortmatic.js"
+    ></script>
+    <script
+      src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"
+      type="application/javascript"
+    ></script>
+    <script type="text/javascript" src="./abi.js"></script>
+    <script type="text/javascript" src="./values.js"></script>
+    <script type="text/javascript" src="./mint.js"></script>
+    <script type="text/javascript" src="./mint-math.js"></script>
+  </body>
+</html>
