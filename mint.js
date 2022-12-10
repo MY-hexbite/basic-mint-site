@@ -16,9 +16,9 @@ let account;
 let signer;
 
 let contractNetwork = 5;
-let contractAddress = "0x13b1082b95febe2a7257663481e97e9607b35b54";
+let contractAddress = "0x761b08bA44529b58c59236214f23a7Efa9bE14d2";
 let cityId = 1;
-let suburbId = 2;
+let suburbId = 1;
 let dutchAuctionId;
 let dutchAuctionState;
 // let mintPrice = 90000000000000000;
