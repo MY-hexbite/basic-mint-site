@@ -236,21 +236,19 @@ async function totalSupply() {
 
 async function refreshCounter() {
   await totalSupply();
+  await getSuburbs();
   await dutchAuctionInfo();
   await updateMintPrice();
-  await getSuburbs();
 }
 
 async function dutchAuctionInfo() {
-  dutchAuctionId = await contract.methods
-    .getDutchAuctionId(cityId, suburbId)
-    .call();
-
   let dutchAuctionInfo = await contract.methods
     .getDutchAuctionInfo(dutchAuctionId)
     .call();
 
-  dutchAuctionState = dutchAuctionInfo[0];
+  dutchAuctionState = dutchAuctionInfo.auctionActive;
+
+  return dutchAuctionInfo;
 }
 
 async function getSuburbs() {
@@ -278,6 +276,7 @@ async function getSuburbs() {
   tokensRemaining = suburbs.currentSupply;
   saleState = suburbs.saleActive;
   allowListState = suburbs.allowListActive;
+  dutchAuctionId = suburbs.dutchAuctionId;
 
   maxSupply.innerText = (maxTokens).toString();
   availableQty.innerText = (maxTokens - tokensRemaining).toString();
