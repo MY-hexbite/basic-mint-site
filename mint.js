@@ -18,9 +18,11 @@ let signer;
 let contractNetwork = 5;
 let contractAddress = "0x761b08bA44529b58c59236214f23a7Efa9bE14d2";
 let cityId = 1;
-let suburbId = 3;
+let suburbId = 2;
 let dutchAuctionId;
 let dutchAuctionState;
+let suburbs;
+let dutchAuctionInfo;
 // let mintPrice = 90000000000000000;
 // let mintPriceInEther = 0.09;
 
@@ -39,15 +41,15 @@ let erc20;
 // verify checksum address and change price to wei
 values.forEach(function(value) {
   value.address = ethers.utils.getAddress(value.address);
-  value.price = ethers.utils.parseEther(value.price);
+  // value.price = ethers.utils.parseEther(value.price);
 });
 
 // values is an array of objects with keys: address, amount, price
 const createMerkleRoot = (values) => {
   const leaves = values.map((v) =>
     ethers.utils.solidityKeccak256(
-      ["address", "uint256", "uint256"],
-      [v.address, _.toInteger(v.amount), v.price]
+      ["address", "uint256", "uint256","uint256"],
+      [v.address, _.toInteger(v.quota), v.cityId, v.suburbId]
     )
   );
 
@@ -59,22 +61,45 @@ const createMerkleRoot = (values) => {
 
 // construct the tree
 const { root, tree } = createMerkleRoot(values);
-
+console.log(root)
 // get the proof from an object with keys: address, amount, price
 const getProof = (tree, value) => {
   const leaf = ethers.utils.solidityKeccak256(
-    ["address", "uint256", "uint256" ],
-    [value.address, value.amount, value.price]
+    ["address", "uint256", "uint256", "uint256" ],
+    [value.address, value.quota, value.cityId, value.suburbId]
   );
   const proof = tree.getHexProof(leaf);
 
   return proof;
 };
 
+
 // find the amount from a values list, or return undefined
-const getAmountFromValues = (values, address) => {
+const getEntryFromValue = (values, address) => {
   return _.find(values, { address });
 };
+
+// * @dev Find an object in a list with three matching fields: address and two
+// *   user defined keys.
+// * @param {array} values array objects of merkle tree entries.
+// * @param {string} address the wallet address to search for.
+// * @param {string} value1 the value to search for under cityId.
+// * @param {string} value2 the value to search for under suburbId.
+// * @returns {object} user value object.
+// */
+const getKeyedValue = (values, address, cityId1, suburbId1) => {
+ return _.find(
+   values,
+   function(o) { // returns item o if this function returns true
+     return (
+       o.address === address &&
+       o.cityId === cityId1 &&
+       o.suburbId === suburbId1
+     );
+   }
+ );
+};
+
 
 ////////////////
 let networkNames = { 1: "Ethereum Mainnet", 4: "Rinkeby Test Network", 5: "Goerli Test Network" };
@@ -146,22 +171,29 @@ contract = new web3Infura.eth.Contract(abi, contractAddress);
 
 async function updateMintPrice() {
   // returns auction price in wei
-  const auctionPrice = await contract.methods
+  let priceToken;
+  if (dutchAuctionState) {
+    priceToken = await contract.methods
     .getDutchAuctionPrice(dutchAuctionId)
     .call();
+  } else if (allowListState) {
+    priceToken = suburbs.allowListPricePerToken;
+  } else if (saleState) {
+    priceToken = suburbs.priceToken;
+  }
 
   mintPriceDiv.innerHTML = `Take home a Token for ${
-    ethers.utils.formatEther(auctionPrice)
+    ethers.utils.formatEther(priceToken)
   } eth.`;
 
-  return auctionPrice;
+  return priceToken;
 }
 
 async function mint() {
   if (!account) {
    return;
   }
-
+  await refreshCounter();
   clearAlert();
 
   if (chainId !== contractNetwork) {
@@ -177,7 +209,9 @@ async function mint() {
   let numberToMint = quantityInput.value;
 
   // // get price
-  let amountInWei = await updateMintPrice();
+  let amountPrice = await updateMintPrice();
+  var price = ethers.BigNumber.from(amountPrice.toString());
+  let amountInWei = price.mul(numberToMint);
 
   document.querySelector("#mint-button").setAttribute("disabled", "disabled");
   mintButton.disabled = true;
@@ -216,16 +250,77 @@ async function mint() {
       createAlert('Canceled transaction.');
       console.log(err);
     };
-
-    document.querySelector("#mint-button").removeAttribute("disabled");
-    mintButton.disabled = false;
-    mintButton.innerText = 'Mint';
-
     // case of allowlist mint -- to be added
-  } else {
+  } else if (allowListState) {
 
+    const value = getKeyedValue(values, account, cityId, suburbId);
+    const proof = getProof(tree, value);
+
+    mintButton.innerText = "Minting..";
+
+    try {
+      gasEstimate = await erc20.estimateGas.mintAllowList(cityId, suburbId, numberToMint, value.quota, proof, overrides);
+
+      gasEstimate = gasEstimate.mul(
+        ethers.BigNumber.from("125").div(ethers.BigNumber.from("100"))
+      );
+
+      overrides.gasLimit = gasEstimate;
+
+      const tx = await contract20.mintAllowList(cityId, suburbId, numberToMint, value.quota,proof, overrides);
+
+      const receipt = await tx.wait();
+      const hash = receipt.transactionHash;
+
+      refreshCounter();
+      createAlert(
+        `Thanks for minting! Your tx link is <a href='${etherscanLink}/${hash}' target="_blank" >${hash.slice(0, 6)}...${hash.slice(-4)}</a>`
+      );
+    } catch(err) {
+      createAlert('Canceled transaction.');
+      console.log(err);
+    };
   }
+  document.querySelector("#mint-button").removeAttribute("disabled");
+  mintButton.disabled = false;
+  mintButton.innerText = 'Mint';
 };
+
+async function updateAvailableToMint(account) {
+  if (allowListState) {
+    const value = getKeyedValue(values, account, cityId, suburbId);
+    numAvailableToMint.style.display = "block";
+
+    if (value === undefined) {
+      numAvailableToMint.innerHTML = "You may not mint any tokens until the public sale";
+      availableToMint = 0;
+      maxPerPurchase = availableToMint;
+      return availableToMint;
+    }
+
+    const allowListMinted = await contract.methods
+      .getAllowListMinted(account, cityId, suburbId)
+      .call();
+
+    availableToMint = Number(value.quota) - Number(allowListMinted);
+
+    availableToMint = Number(availableToMint);
+    maxPerPurchase = availableToMint;
+
+    if (availableToMint === 1) {
+      numAvailableToMint.innerHTML = `You may mint ${availableToMint} token`;
+    } else {
+      numAvailableToMint.innerHTML = `You may mint up to ${availableToMint} tokens`;
+    }
+  // in case of public sale
+  } else {
+    // numAvailableToMint.style.display = "block";
+    // numAvailableToMint.innerHTML = `You may mint up to ${maxPerPurchase} tokens`;
+    // await updateMintPrice(price.toString());
+  }
+  return availableToMint;
+}
+
 
 // checks total minted on the contract
 async function totalSupply() {
@@ -233,16 +328,16 @@ async function totalSupply() {
   return tokensRemaining;
 }
 
+async function getDutchAuctionInfo() {
+  // bool auctionActive; // flag marking the auction active or inactive
+  // uint80 startTime; // block timestamp when auction started
+  // uint80 duration; // time in seconds for price to drop from startPrice to finalPrice
+  // uint88 startPrice; // in WEI: price declines from here
+  // uint88 finalPrice; // in WEI: price rests here after declining
+  // uint88 priceStep; // in WEI: price declines in this step size
+  // uint80 timeStepSeconds; // in SECONDS: time between price drop steps
 
-async function refreshCounter() {
-  await totalSupply();
-  await getSuburbs();
-  await dutchAuctionInfo();
-  await updateMintPrice();
-}
-
-async function dutchAuctionInfo() {
-  let dutchAuctionInfo = await contract.methods
+  dutchAuctionInfo = await contract.methods
     .getDutchAuctionInfo(dutchAuctionId)
     .call();
 
@@ -268,7 +363,7 @@ async function getSuburbs() {
   //   saleActive: {bool}, // is the sale active? t/f
   // }
 
-  const suburbs = await contract.methods
+  suburbs = await contract.methods
   .suburbs(cityId, suburbId)
   .call();
 
@@ -282,6 +377,22 @@ async function getSuburbs() {
   availableQty.innerText = (maxTokens - tokensRemaining).toString();
 
   return suburbs;
+}
+async function refreshCounter() {
+  await totalSupply();
+  await getSuburbs();
+  await getDutchAuctionInfo();
+
+  updateMintPrice();
+
+  if (account) await updateAvailableToMint(account);
+
+  if (!dutchAuctionState && !allowListState) {
+    document.querySelector("#mint-button").setAttribute("disabled", "disabled");
+    mintButton.disabled = true;
+  } else {
+    document.querySelector("#mint-button").removeAttribute("disabled");
+  }
 }
 
 async function fetchAccountData() {
@@ -324,7 +435,7 @@ async function fetchAccountData() {
 
   document.getElementById("mint-section").style.display = "block";
   document.getElementById("btn-connect").style.display = "none";
-  // availableToMint = await updateAvailableToMint(account);
+  availableToMint = await updateAvailableToMint(account);
 
   await refreshCounter();
   mintButton.disabled = false;
@@ -381,7 +492,7 @@ async function onConnect() {
     document.getElementById("btn-connect").style.display = "none";
     document.getElementById("account").style.display = "block";
     document.getElementById("mint-section").style.display = "block";
-
+   // await refreshCounter();
     await fetchAccountData();
   } catch (e) {
     console.log("Could not get a wallet connection", e);
