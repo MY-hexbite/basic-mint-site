@@ -3,7 +3,13 @@ var values = [
       "address": "0x25428d29a6FA3629ff401c6DADe418B19CB2D615",
       "quota": 2,
       "cityId": 1,
-      "suburbId": 123
+      "suburbId": 3,
+    },
+    {
+      "address": "0x25428d29a6FA3629ff401c6DADe418B19CB2D615",
+      "quota": 2,
+      "cityId": 1,
+      "suburbId": 2,
     },
     {
       "address": "0x2efd16d48e02edff28175bfdae6aed99d054d9a2",
