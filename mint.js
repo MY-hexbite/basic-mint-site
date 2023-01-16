@@ -244,14 +244,14 @@ async function mint() {
 
       refreshCounter();
       createAlert(
-        `Thanks for minting! Your tx link is <a href='${etherscanLink}/${hash}' target="_blank" >${hash.slice(0, 6)}...${hash.slice(-4)}</a>`
+        `Thanks for minting! Your tx link is <a href="${etherscanLink}/${hash}" target="_blank" >${hash.slice(0, 6)}...${hash.slice(-4)}</a>`
       );
     } catch(err) {
-      createAlert('Canceled transaction.');
+      createAlert("Canceled transaction.");
       console.log(err);
     };
     // case of allowlist mint -- to be added
-  } else if (allowListState) {
+  } else if (allowListState && availableToMint !== 0) {
 
     const value = getKeyedValue(values, account, cityId, suburbId);
     const proof = getProof(tree, value);
@@ -272,18 +272,18 @@ async function mint() {
       const receipt = await tx.wait();
       const hash = receipt.transactionHash;
 
-      refreshCounter();
+      await refreshCounter();
       createAlert(
-        `Thanks for minting! Your tx link is <a href='${etherscanLink}/${hash}' target="_blank" >${hash.slice(0, 6)}...${hash.slice(-4)}</a>`
+        `Thanks for minting! Your tx link is <a href="${etherscanLink}/${hash}" target="_blank" >${hash.slice(0, 6)}...${hash.slice(-4)}</a>`
       );
     } catch(err) {
-      createAlert('Canceled transaction.');
+      createAlert("Canceled transaction.");
       console.log(err);
     };
   }
   document.querySelector("#mint-button").removeAttribute("disabled");
   mintButton.disabled = false;
-  mintButton.innerText = 'Mint';
+  mintButton.innerText = "MINT";
 };
 
 async function updateAvailableToMint(account) {
@@ -404,7 +404,7 @@ async function fetchAccountData() {
   // Get connected chain id from Ethereum node
   chainId = await web3.eth.getChainId();
   if (chainId !== contractNetwork) {
-    console.log('Incorrect Network');
+    console.log("Incorrect Network");
     if (window.ethereum) {
       try {
         // check if the chain to connect to is installed
@@ -492,7 +492,7 @@ async function onConnect() {
     document.getElementById("btn-connect").style.display = "none";
     document.getElementById("account").style.display = "block";
     document.getElementById("mint-section").style.display = "block";
-   // await refreshCounter();
+
     await fetchAccountData();
   } catch (e) {
     console.log("Could not get a wallet connection", e);
@@ -534,8 +534,8 @@ async function onDisconnect() {
     account = null;
     clearAlert();
 
-    mintPriceDiv.innerHTML = '';
-    numAvailableToMint.innerHTML = '';
+    mintPriceDiv.innerHTML = "";
+    numAvailableToMint.innerHTML = "";
     // Set the UI back to the initial state
     document.getElementById("mint-section").style.display = "none";
     document.querySelector("#btn-connect").innerText = "Connect Wallet";
