@@ -320,6 +320,9 @@ async function updateAvailableToMint(account) {
     } else {
       numAvailableToMint.innerHTML = `You may mint up to ${availableToMint} tokens`;
     }
+  } else if (dutchAuctionState) {
+    maxPerPurchase = await contract.methods.maxDutchAuctionMints().call();
+
   // in case of public sale
   } else {
     // numAvailableToMint.style.display = "block";
