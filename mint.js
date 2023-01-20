@@ -18,7 +18,7 @@ let signer;
 let contractNetwork = 5;
 let contractAddress = "0x92f2c3cD20DE7368927d8765ab39c99122310aae";
 let cityId = 1;
-let suburbId = 1;
+let suburbId = 2;
 let dutchAuctionId;
 let dutchAuctionState;
 let suburbs;
@@ -108,6 +108,7 @@ let alertBar = document.getElementById("alert-bar");
 let numAvailableToMint = document.getElementById("available-mint");
 let mintButton = document.querySelector("#mint-button");
 let mintPriceDiv = document.getElementById("mint-price");
+let dutchAuctionTimeRemaining = document.getElementById("dutch-auction-time-remaining");
 let availableQty = document.getElementById("nfts-minted");
 let maxSupply = document.getElementById("max-supply");
 let quantityInput = document.getElementById("quantity");
@@ -116,7 +117,7 @@ let quantityInput = document.getElementById("quantity");
 async function init() {
   document.querySelector("#mint-button").setAttribute("disabled", "disabled");
   clearAlert();
-
+  dutchAuctionTimeRemaining.innerHTML = '';
   const providerOptions = {
     walletconnect: {
       package: WalletConnectProvider, // required
@@ -172,10 +173,17 @@ contract = new web3Infura.eth.Contract(abi, contractAddress);
 async function updateMintPrice() {
   // returns auction price in wei
   let priceToken;
+  let timeRemaining;
   if (dutchAuctionState) {
     priceToken = await contract.methods
     .getDutchAuctionPrice(dutchAuctionId)
     .call();
+
+    timeRemaining = await contract.methods
+    .getRemainingDutchAuctionTime(dutchAuctionId)
+    .call();
+
+    dutchAuctionTimeRemaining.innerHTML = `Dutch Auction Time left: ${timeRemaining}`;
   } else if (allowListState) {
     priceToken = suburbs.allowListPricePerToken;
   } else if (saleState) {
