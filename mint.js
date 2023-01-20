@@ -16,9 +16,9 @@ let account;
 let signer;
 
 let contractNetwork = 5;
-let contractAddress = "0x761b08bA44529b58c59236214f23a7Efa9bE14d2";
+let contractAddress = "0x92f2c3cD20DE7368927d8765ab39c99122310aae";
 let cityId = 1;
-let suburbId = 2;
+let suburbId = 1;
 let dutchAuctionId;
 let dutchAuctionState;
 let suburbs;
