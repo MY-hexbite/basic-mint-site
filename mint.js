@@ -44,7 +44,7 @@ values.forEach(function(value) {
   // value.price = ethers.utils.parseEther(value.price);
 });
 
-// values is an array of objects with keys: address, amount, price
+// values is an array of objects with keys: address, quota, cityid, suburbid
 const createMerkleRoot = (values) => {
   const leaves = values.map((v) =>
     ethers.utils.solidityKeccak256(
