@@ -17,12 +17,16 @@ let signer;
 
 let contractNetwork = 5;
 let contractAddress = "0x92f2c3cD20DE7368927d8765ab39c99122310aae";
-let cityId = 1;
-let suburbId = 2;
+let cityId = 3;
+let suburbId = 1;
 let dutchAuctionId;
 let dutchAuctionState;
 let suburbs;
 let dutchAuctionInfo;
+
+let englishAuctionState;
+let englishAuctionInfo;
+let englishAuctionId;
 // let mintPrice = 90000000000000000;
 // let mintPriceInEther = 0.09;
 
@@ -112,11 +116,13 @@ let dutchAuctionTimeRemaining = document.getElementById("dutch-auction-time-rema
 let availableQty = document.getElementById("nfts-minted");
 let maxSupply = document.getElementById("max-supply");
 let quantityInput = document.getElementById("quantity");
+let bidInput = document.getElementById("input-bid");
 
 
 async function init() {
   document.querySelector("#mint-button").setAttribute("disabled", "disabled");
   clearAlert();
+  bidInput.style.display = "none";
   dutchAuctionTimeRemaining.innerHTML = '';
   const providerOptions = {
     walletconnect: {
@@ -188,16 +194,27 @@ async function updateMintPrice() {
     priceToken = suburbs.allowListPricePerToken;
   } else if (saleState) {
     priceToken = suburbs.priceToken;
+  } else if (englishAuctionState) {
+    priceToken = englishAuctionInfo.highestBid;
   }
 
+  if (!englishAuctionState) {
   mintPriceDiv.innerHTML = `Take home a Token for ${
     ethers.utils.formatEther(priceToken)
   } eth.`;
+} else {
+  mintPriceDiv.innerHTML = `HighestBid is  ${
+    ethers.utils.formatEther(priceToken)
+  } eth. The minimum increase in bidding is ${
+    ethers.utils.formatEther(englishAuctionInfo.outbidBuffer)
+  }`;
+}
 
   return priceToken;
 }
 
 async function mint() {
+
   if (!account) {
    return;
   }
@@ -218,7 +235,7 @@ async function mint() {
 
   // // get price
   let amountPrice = await updateMintPrice();
-  var price = ethers.BigNumber.from(amountPrice.toString());
+  let price = ethers.BigNumber.from(amountPrice.toString());
   let amountInWei = price.mul(numberToMint);
 
   document.querySelector("#mint-button").setAttribute("disabled", "disabled");
@@ -227,6 +244,10 @@ async function mint() {
   const signer = provider20.getSigner();
   let contract20 = new ethers.Contract(contractAddress,abi,signer);
 
+  if (englishAuctionState) {
+    price = ethers.utils.parseEther(document.getElementById("price-ea").value);
+    amountInWei = price;
+  }
   const overrides = {
     from: account,
     value: amountInWei.toString(),
@@ -288,6 +309,31 @@ async function mint() {
       createAlert("Canceled transaction.");
       console.log(err);
     };
+  } else if (englishAuctionState) {
+    mintButton.innerText = "Minting..";
+    console.log('Eng Auction mint')
+    try {
+      gasEstimate = await erc20.estimateGas.bidEnglish(cityId, suburbId, overrides);
+
+      gasEstimate = gasEstimate.mul(
+        ethers.BigNumber.from("125").div(ethers.BigNumber.from("100"))
+      );
+
+      overrides.gasLimit = gasEstimate;
+
+      const tx = await contract20.bidEnglish(cityId, suburbId, overrides);
+
+      const receipt = await tx.wait();
+      const hash = receipt.transactionHash;
+
+      refreshCounter();
+      createAlert(
+        `Thanks for minting! Your tx link is <a href="${etherscanLink}/${hash}" target="_blank" >${hash.slice(0, 6)}...${hash.slice(-4)}</a>`
+      );
+    } catch(err) {
+      createAlert("Canceled transaction.");
+      console.log(err);
+    };
   }
   document.querySelector("#mint-button").removeAttribute("disabled");
   mintButton.disabled = false;
@@ -322,7 +368,9 @@ async function updateAvailableToMint(account) {
     }
   } else if (dutchAuctionState) {
     maxPerPurchase = await contract.methods.maxDutchAuctionMints().call();
-
+  } else if (englishAuctionState) {
+    availableToMint = 1;
+    maxPerPurchase = availableToMint;
   // in case of public sale
   } else {
     // numAvailableToMint.style.display = "block";
@@ -357,9 +405,30 @@ async function getDutchAuctionInfo() {
   return dutchAuctionInfo;
 }
 
+async function getEnglishAuctionInfo() {
+  // lotSize: {number} // number of tokens to be sold
+  // highestBid: {number} // current highest bid, in WEI
+  // outbidBuffer: {number} // new bids must exceed highestBid by this
+  // startTime: {number} // unix timestamp in seconds at start of the auction
+  // endTime: {number} // unix timestamp in seconds at the end of the auction
+  // highestBidder: {bytes / eth address} // current highest bidder
+  // settled: {boolean} // flag to mark the auction as settled
+
+  englishAuctionState = await contract.methods
+    .englishAuctionActive(englishAuctionId)
+    .call();
+
+  englishAuctionInfo = await contract.methods
+    .getEnglishAuctionInfo(englishAuctionId)
+    .call();
+
+  if (englishAuctionState) bidInput.style.display = "block";
+
+  return englishAuctionInfo;
+}
+
 async function getSuburbs() {
-  // const suburb = await contract.suburbs(1, 1);
-  // // suburb is an object with keys like:
+  // suburb is an object with keys like:
   // {
   //   id: {number}, // 1, 2, 3... etc. suburbId local to each city, starts at 1
   //   cityId: {number}, // parent city
@@ -383,16 +452,19 @@ async function getSuburbs() {
   saleState = suburbs.saleActive;
   allowListState = suburbs.allowListActive;
   dutchAuctionId = suburbs.dutchAuctionId;
+  englishAuctionId = suburbs.englishAuctionId;
 
   maxSupply.innerText = (maxTokens).toString();
   availableQty.innerText = (maxTokens - tokensRemaining).toString();
 
   return suburbs;
 }
+
 async function refreshCounter() {
   await totalSupply();
   await getSuburbs();
   await getDutchAuctionInfo();
+  await getEnglishAuctionInfo();
 
   updateMintPrice();
 
