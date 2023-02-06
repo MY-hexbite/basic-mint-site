@@ -27,6 +27,7 @@ let dutchAuctionInfo;
 let englishAuctionState;
 let englishAuctionInfo;
 let englishAuctionId;
+let lotSize;
 // let mintPrice = 90000000000000000;
 // let mintPriceInEther = 0.09;
 
@@ -454,9 +455,6 @@ async function getSuburbs() {
   dutchAuctionId = suburbs.dutchAuctionId;
   englishAuctionId = suburbs.englishAuctionId;
 
-  maxSupply.innerText = (maxTokens).toString();
-  availableQty.innerText = (maxTokens - tokensRemaining).toString();
-
   return suburbs;
 }
 
@@ -467,6 +465,13 @@ async function refreshCounter() {
   await getEnglishAuctionInfo();
 
   updateMintPrice();
+
+  if (englishAuctionState) {
+    maxSupply.innerText = `Tokens Supply: ${(maxTokens).toString()}, Lot Size: ${(englishAuctionInfo.lotSize)}`;
+  } else {
+    maxSupply.innerText = `${(maxTokens).toString()} Tokens left`;
+    availableQty.innerText = `${(maxTokens - tokensRemaining).toString()} / `;
+  }
 
   if (account) await updateAvailableToMint(account);
 
